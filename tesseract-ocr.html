@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BCASカード番号読み取りアプリ (Tesseract.js版)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9fafb;
+        }
+        .container {
+            max-width: 1024px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .header h1 {
+            font-size: 1.875rem;
+            font-weight: bold;
+            color: #111827;
+            margin-bottom: 1rem;
+        }
+        .header p {
+            font-size: 1.125rem;
+            color: #6b7280;
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.5rem;
+        }
+        .form-group input[type="file"] {
+            display: block;
+            width: 100%;
+            font-size: 0.875rem;
+            color: #6b7280;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+        }
+        .form-group p {
+            margin-top: 0.25rem;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        .preview {
+            margin-top: 1rem;
+        }
+        .preview img {
+            width: 100%;
+            max-width: 28rem;
+            height: auto;
+            border-radius: 0.5rem;
+            border: 1px solid #d1d5db;
+            object-fit: contain;
+        }
+        .buttons {
+            display: flex;
+            gap: 1rem;
+        }
+        .btn {
+            flex: 1;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            border: none;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .btn-primary {
+            background-color: #2563eb;
+            color: white;
+        }
+        .btn-primary:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+        .btn-secondary {
+            background-color: #d1d5db;
+            color: #374151;
+        }
+        .result {
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+        }
+        .result h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 1rem;
+        }
+        .success {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 0.375rem;
+            padding: 1rem;
+        }
+        .error {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 0.375rem;
+            padding: 1rem;
+        }
+        .success-content, .error-content {
+            display: flex;
+            align-items: flex-start;
+        }
+        .icon {
+            flex-shrink: 0;
+            margin-right: 0.75rem;
+        }
+        .icon svg {
+            height: 1.25rem;
+            width: 1.25rem;
+        }
+        .success .icon svg {
+            color: #4ade80;
+        }
+        .error .icon svg {
+            color: #f87171;
+        }
+        .content h3 {
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        .success .content h3 {
+            color: #166534;
+        }
+        .error .content h3 {
+            color: #991b1b;
+        }
+        .content p {
+            font-size: 0.875rem;
+            margin: 0;
+        }
+        .success .content p {
+            color: #15803d;
+        }
+        .error .content p {
+            color: #dc2626;
+        }
+        .bcas-number {
+            font-family: monospace;
+            font-size: 1.125rem;
+            background-color: white;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            border: 1px solid #d1d5db;
+            margin: 0.5rem 0;
+        }
+        .confidence {
+            margin-top: 0.25rem;
+        }
+        .footer {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .progress {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #f3f4f6;
+            border-radius: 0.375rem;
+            display: none;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 0.5rem;
+            background-color: #e5e7eb;
+            border-radius: 0.25rem;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #3b82f6;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            margin-top: 0.5rem;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        .ocr-options {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background-color: #f8fafc;
+            border-radius: 0.375rem;
+            border: 1px solid #e2e8f0;
+        }
+        .ocr-options h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #374151;
+        }
+        .ocr-options label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        .ocr-options input[type="radio"] {
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>BCASカード番号読み取りアプリ</h1>
+            <p>BCASカードの裏面写真をアップロードして、20桁の番号を自動で読み取ります</p>
+        </div>
+
+        <div class="card">
+            <form id="uploadForm">
+
+                <div class="form-group">
+                    <label for="fileInput">画像ファイルを選択してください</label>
+                    <input type="file" id="fileInput" accept="image/*" required>
+                    <p>JPG、PNG、GIF形式の画像ファイルをサポートしています</p>
+                </div>
+
+                <div id="previewContainer" class="preview" style="display: none;">
+                    <label>プレビュー</label>
+                    <img id="previewImage" alt="アップロードされた画像">
+                </div>
+
+                <div class="progress" id="progressContainer">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">準備中...</div>
+                </div>
+
+                <div class="buttons">
+                    <button type="submit" id="submitBtn" class="btn btn-primary" disabled>
+                        番号を読み取る
+                    </button>
+                    <button type="button" id="resetBtn" class="btn btn-secondary">
+                        リセット
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div id="resultContainer" class="result" style="display: none;">
+            <h2>読み取り結果</h2>
+            <div id="resultContent"></div>
+        </div>
+
+        <div class="footer">
+            <p>sato.m</p>
+        </div>
+    </div>
+
+    <!-- Tesseract.js CDN -->
+    <script src="https://unpkg.com/tesseract.js@4.1.1/dist/tesseract.min.js"></script>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewImage = document.getElementById('previewImage');
+        const submitBtn = document.getElementById('submitBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const resultContainer = document.getElementById('resultContainer');
+        const resultContent = document.getElementById('resultContent');
+        const uploadForm = document.getElementById('uploadForm');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+
+        let selectedFile = null;
+
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                const url = URL.createObjectURL(file);
+                previewImage.src = url;
+                previewContainer.style.display = 'block';
+                submitBtn.disabled = false;
+            }
+        });
+
+        uploadForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!selectedFile) return;
+            
+            submitBtn.textContent = '読み取り中...';
+            submitBtn.disabled = true;
+            uploadForm.classList.add('loading');
+            progressContainer.style.display = 'block';
+
+            try {
+                const result = await processWithTesseract(selectedFile);
+                displayResult(result);
+            } catch (error) {
+                console.error('メインエラー:', error);
+                displayResult({
+                    success: false,
+                    error: `エラーが発生しました: ${error.message}`,
+                    debug: {
+                        errorType: error.name,
+                        errorMessage: error.message,
+                        errorStack: error.stack
+                    }
+                });
+            } finally {
+                submitBtn.textContent = '番号を読み取る';
+                submitBtn.disabled = false;
+                uploadForm.classList.remove('loading');
+                progressContainer.style.display = 'none';
+            }
+        });
+
+        resetBtn.addEventListener('click', function() {
+            selectedFile = null;
+            fileInput.value = '';
+            previewContainer.style.display = 'none';
+            submitBtn.disabled = true;
+            resultContainer.style.display = 'none';
+            progressContainer.style.display = 'none';
+        });
+
+        async function processWithTesseract(file) {
+            let worker = null;
+            try {
+                progressText.textContent = 'OCRを初期化中...';
+                progressFill.style.width = '10%';
+
+                console.log('OCRを初期化中...');
+                
+                // OCRライブラリが利用可能かチェック
+                if (typeof Tesseract === 'undefined') {
+                    throw new Error('OCRライブラリが読み込まれていません。インターネット接続を確認してください。');
+                }
+
+                const { createWorker } = Tesseract;
+                
+                // より詳細なログ設定
+                worker = await createWorker({
+                    logger: m => {
+                        console.log('OCRログ:', m);
+                        if (m.status === 'recognizing text') {
+                            progressText.textContent = `テキスト認識中... ${Math.round(m.progress * 100)}%`;
+                            progressFill.style.width = `${10 + m.progress * 80}%`;
+                        } else if (m.status === 'loading tesseract core') {
+                            progressText.textContent = 'OCRコアを読み込み中...';
+                            progressFill.style.width = '20%';
+                        } else if (m.status === 'initializing tesseract') {
+                            progressText.textContent = 'OCRを初期化中...';
+                            progressFill.style.width = '40%';
+                        } else if (m.status === 'loading language traineddata') {
+                            progressText.textContent = '言語データを読み込み中...';
+                            progressFill.style.width = '60%';
+                        } else if (m.status === 'initialized tesseract') {
+                            progressText.textContent = 'OCR初期化完了';
+                            progressFill.style.width = '80%';
+                        }
+                    }
+                });
+
+                // 言語を設定（英語のみで試す）
+                await worker.loadLanguage('eng');
+                await worker.initialize('eng');
+
+                progressText.textContent = '画像を処理中...';
+                progressFill.style.width = '90%';
+
+                console.log('画像認識を開始...');
+                const { data: { text, confidence } } = await worker.recognize(file);
+                
+                progressText.textContent = '完了';
+                progressFill.style.width = '100%';
+
+                console.log('読み取ったテキスト:', text);
+                console.log('認識信頼度:', confidence);
+                
+                const result = extractBCASNumber(text);
+                result.rawText = text;
+                result.rawConfidence = confidence;
+                return result;
+
+            } catch (error) {
+                console.error('OCRエラー詳細:', error);
+                console.error('エラースタック:', error.stack);
+                
+                // より詳細なエラー情報を返す
+                return {
+                    success: false,
+                    error: `OCRエラー: ${error.message}`,
+                    debug: {
+                        errorType: error.name,
+                        errorMessage: error.message,
+                        errorStack: error.stack,
+                        ocrAvailable: typeof Tesseract !== 'undefined'
+                    }
+                };
+            } finally {
+                // ワーカーを確実に終了
+                if (worker) {
+                    try {
+                        await worker.terminate();
+                    } catch (e) {
+                        console.warn('ワーカーの終了でエラー:', e);
+                    }
+                }
+            }
+        }
+
+
+        function extractBCASNumber(text) {
+            if (!text || typeof text !== 'string') {
+                return {
+                    success: false,
+                    error: 'テキストを読み取れませんでした。'
+                };
+            }
+
+            // BCAS番号の正規表現パターン（20桁）
+            const bcasPattern = /(\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}|\d{20})/g;
+            const matches = text.match(bcasPattern);
+            
+            if (!matches || matches.length === 0) {
+                return {
+                    success: false,
+                    error: 'BCAS番号（20桁の数字）が見つかりませんでした。カードの裏面がはっきりと写っているか確認してください。',
+                    debug: {
+                        extractedText: text.substring(0, 200) + (text.length > 200 ? '...' : '')
+                    }
+                };
+            }
+
+            // 最初のマッチを選択し、数字のみに正規化
+            const rawNumber = matches[0];
+            const cleanNumber = rawNumber.replace(/[\s\-]/g, '');
+            
+            // 20桁かどうか確認
+            if (cleanNumber.length !== 20) {
+                return {
+                    success: false,
+                    error: '20桁の番号が見つかりませんでした。',
+                    debug: {
+                        extractedText: text.substring(0, 200) + (text.length > 200 ? '...' : ''),
+                        foundNumber: cleanNumber,
+                        foundLength: cleanNumber.length
+                    }
+                };
+            }
+
+            // 信頼度を計算
+            let confidence = 0.8;
+            if (/^\d{20}$/.test(cleanNumber)) {
+                confidence = 0.9;
+            }
+
+            return {
+                success: true,
+                bcasNumber: cleanNumber,
+                confidence: confidence,
+            };
+        }
+
+        function displayResult(result) {
+            resultContainer.style.display = 'block';
+            
+            if (result.success) {
+                resultContent.innerHTML = `
+                    <div class="success">
+                        <div class="success-content">
+                            <div class="icon">
+                                <svg viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="content">
+                                <h3>読み取り成功</h3>
+                                <div>
+                                    <div class="bcas-number">${result.bcasNumber}</div>
+                                    ${result.confidence ? `<div class="confidence">信頼度: ${Math.round(result.confidence * 100)}%</div>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                resultContent.innerHTML = `
+                    <div class="error">
+                        <div class="error-content">
+                            <div class="icon">
+                                <svg viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="content">
+                                <h3>読み取り失敗</h3>
+                                <p>${result.error}</p>
+                                ${result.debug ? `<details style="margin-top: 0.5rem;"><summary>デバッグ情報</summary><pre style="font-size: 0.75rem; margin-top: 0.5rem; white-space: pre-wrap;">${JSON.stringify(result.debug, null, 2)}</pre></details>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
